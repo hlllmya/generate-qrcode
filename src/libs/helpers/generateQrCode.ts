@@ -144,6 +144,110 @@ export const generateWifiQrCode = async (
 	return generateQrCodeFromContent(payload, options);
 };
 
+export type TVcardQrPayload = {
+	fullName: string;
+	organization?: string;
+	phone?: string;
+	email?: string;
+	website?: string;
+	address?: string;
+};
+
+const escapeVcardField = (value: string): string =>
+	value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
+const validateOptionalEmail = (email: unknown): string | undefined => {
+	if (email === undefined || email === null || email === '') {
+		return undefined;
+	}
+
+	if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+		throw new InvalidParameterException('email tidak valid');
+	}
+
+	return email.trim();
+};
+
+const validateOptionalUrl = (url: unknown, fieldName: string): string | undefined => {
+	if (url === undefined || url === null || url === '') {
+		return undefined;
+	}
+
+	return validateQrCodeUrl(url, fieldName);
+};
+
+const validateOptionalString = (value: unknown, fieldName: string): string | undefined => {
+	if (value === undefined || value === null || value === '') {
+		return undefined;
+	}
+
+	if (typeof value !== 'string' || value.trim() === '') {
+		throw new InvalidParameterException(`${fieldName} harus berupa string`);
+	}
+
+	return value.trim();
+};
+
+export const validateVcardQrPayload = (body: unknown): TVcardQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	const fullName = validateOptionalString(payload?.fullName, 'fullName');
+	if (!fullName) {
+		throw new InvalidParameterException('fullName wajib diisi dan berupa string');
+	}
+
+	return {
+		fullName,
+		organization: validateOptionalString(payload.organization, 'organization'),
+		phone: validateOptionalString(payload.phone, 'phone'),
+		email: validateOptionalEmail(payload.email),
+		website: validateOptionalUrl(payload.website, 'website'),
+		address: validateOptionalString(payload.address, 'address')
+	};
+};
+
+export const buildVcardQrPayload = (contact: TVcardQrPayload): string => {
+	const lines = [
+		'BEGIN:VCARD',
+		'VERSION:3.0',
+		`FN:${escapeVcardField(contact.fullName)}`,
+		`N:;${escapeVcardField(contact.fullName)};;;`
+	];
+
+	if (contact.organization) {
+		lines.push(`ORG:${escapeVcardField(contact.organization)}`);
+	}
+
+	if (contact.phone) {
+		lines.push(`TEL;TYPE=CELL:${escapeVcardField(contact.phone)}`);
+	}
+
+	if (contact.email) {
+		lines.push(`EMAIL:${escapeVcardField(contact.email)}`);
+	}
+
+	if (contact.website) {
+		lines.push(`URL:${escapeVcardField(contact.website)}`);
+	}
+
+	if (contact.address) {
+		lines.push(`ADR;TYPE=WORK:;;${escapeVcardField(contact.address)};;;;`);
+	}
+
+	lines.push('END:VCARD');
+
+	return lines.join('\n');
+};
+
+export const generateVcardQrCode = async (
+	contact: TVcardQrPayload,
+	options?: TQrCodeOptions
+): Promise<string> => {
+	const payload = buildVcardQrPayload(contact);
+
+	return generateQrCodeFromContent(payload, options);
+};
+
 const normalizeQrCodeSvg = (svg: string): string => {
 	const unescaped = svg.trim().replace(/\\"/g, '"');
 
