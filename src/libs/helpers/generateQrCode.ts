@@ -31,14 +31,16 @@ export const validateQrCodeUrl = (url: unknown, fieldName = 'url'): string => {
 	return trimmed;
 };
 
-export const generateQrCodeSvg = async (
-	url: string,
+export const generateQrCodeSvgFromContent = async (
+	content: string,
 	options?: TQrCodeOptions
 ): Promise<string> => {
-	const validatedUrl = validateQrCodeUrl(url);
+	if (typeof content !== 'string' || content.trim() === '') {
+		throw new InvalidParameterException('Konten wajib diisi dan berupa string');
+	}
 
 	try {
-		const svg = await QRCode.toString(validatedUrl, {
+		const svg = await QRCode.toString(content.trim(), {
 			type: 'svg',
 			width: options?.width,
 			margin: options?.margin,
@@ -46,8 +48,17 @@ export const generateQrCodeSvg = async (
 		});
 		return normalizeQrCodeSvg(svg);
 	} catch {
-		throw new InvalidParameterException('Gagal membuat QR code dari URL yang diberikan');
+		throw new InvalidParameterException('Gagal membuat QR code dari konten yang diberikan');
 	}
+};
+
+export const generateQrCodeSvg = async (
+	url: string,
+	options?: TQrCodeOptions
+): Promise<string> => {
+	const validatedUrl = validateQrCodeUrl(url);
+
+	return generateQrCodeSvgFromContent(validatedUrl, options);
 };
 
 export const svgToBase64 = (svg: string): string => {
@@ -65,6 +76,72 @@ export const generateQrCodeFromUrl = async (
 	const svg = await generateQrCodeSvg(url, options);
 
 	return svgToBase64(svg);
+};
+
+export const generateQrCodeFromContent = async (
+	content: string,
+	options?: TQrCodeOptions
+): Promise<string> => {
+	const svg = await generateQrCodeSvgFromContent(content, options);
+
+	return svgToBase64(svg);
+};
+
+export type TWifiEncryption = 'WPA' | 'WEP' | 'nopass';
+
+export type TWifiQrPayload = {
+	ssid: string;
+	password: string;
+	encryption: TWifiEncryption;
+	hidden: boolean;
+};
+
+const escapeWifiQrField = (value: string): string =>
+	value.replace(/([\\;,":])/g, '\\$1');
+
+export const validateWifiQrPayload = (body: unknown): TWifiQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (typeof payload?.ssid !== 'string' || payload.ssid.trim() === '') {
+		throw new InvalidParameterException('ssid wajib diisi dan berupa string');
+	}
+
+	const encryption = payload.encryption ?? 'WPA';
+	if (encryption !== 'WPA' && encryption !== 'WEP' && encryption !== 'nopass') {
+		throw new InvalidParameterException('encryption harus WPA, WEP, atau nopass');
+	}
+
+	const password = typeof payload.password === 'string' ? payload.password : '';
+	if (encryption !== 'nopass' && password === '') {
+		throw new InvalidParameterException('password wajib diisi untuk enkripsi WPA atau WEP');
+	}
+
+	return {
+		ssid: payload.ssid.trim(),
+		password,
+		encryption,
+		hidden: payload.hidden === true
+	};
+};
+
+export const buildWifiQrPayload = (wifi: TWifiQrPayload): string => {
+	const fields = [
+		`T:${wifi.encryption}`,
+		`S:${escapeWifiQrField(wifi.ssid)}`,
+		`P:${escapeWifiQrField(wifi.password)}`,
+		`H:${wifi.hidden}`
+	];
+
+	return `WIFI:${fields.join(';')};;`;
+};
+
+export const generateWifiQrCode = async (
+	wifi: TWifiQrPayload,
+	options?: TQrCodeOptions
+): Promise<string> => {
+	const payload = buildWifiQrPayload(wifi);
+
+	return generateQrCodeFromContent(payload, options);
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {

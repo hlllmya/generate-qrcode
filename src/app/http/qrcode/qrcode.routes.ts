@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { generateQrCodeHandler } from './qrcode.controller';
+import { generateQrCodeHandler, generateWifiQrCodeHandler } from './qrcode.controller';
 
 const qrcodeRouter = Router();
 
 qrcodeRouter.post('/generate', generateQrCodeHandler);
+qrcodeRouter.post('/generate-wifi', generateWifiQrCodeHandler);
 
 export default qrcodeRouter;
