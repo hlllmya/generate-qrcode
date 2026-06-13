@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import {
 	generateBatchQrCodes,
+	generateAppQrCode,
 	generateEmailQrCode,
 	generateEventQrCode,
 	generateLocationQrCode,
@@ -15,6 +16,7 @@ import {
 	generateWifiQrCode,
 	parseQrCodeOptionsFromQuery,
 	validateBatchQrPayload,
+	validateAppQrPayload,
 	validateEmailQrPayload,
 	validateEventQrPayload,
 	validateLocationQrPayload,
@@ -307,6 +309,22 @@ export const generateSocialQrCodeHandler = async (
 		const result = await generateSocialQrCode(social, options);
 
 		sendQrCodeResponse(res, 'QR code media sosial berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateAppQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const app = validateAppQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateAppQrCode(app, options);
+
+		sendQrCodeResponse(res, 'QR code aplikasi berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
