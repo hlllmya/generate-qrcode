@@ -7,6 +7,7 @@ import {
 	generatePhoneQrCode,
 	generateQrCodeFromUrl,
 	generateSmsQrCode,
+	generateSocialQrCode,
 	generateTextQrCode,
 	generateUtmQrCode,
 	generateVcardQrCode,
@@ -21,6 +22,7 @@ import {
 	validateQrCodeOptions,
 	validateQrCodeUrl,
 	validateSmsQrPayload,
+	validateSocialQrPayload,
 	validateTextQrPayload,
 	validateUtmQrPayload,
 	validateVcardQrPayload,
@@ -289,6 +291,22 @@ export const generateEventQrCodeHandler = async (
 		const result = await generateEventQrCode(event, options);
 
 		sendQrCodeResponse(res, 'QR code event berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateSocialQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const social = validateSocialQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateSocialQrCode(social, options);
+
+		sendQrCodeResponse(res, 'QR code media sosial berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}

@@ -15,6 +15,7 @@ export type TQrCodeType =
 	| 'sms'
 	| 'utm'
 	| 'event'
+	| 'social'
 	| 'batch';
 
 export type TQrCodeOptions = {
@@ -919,6 +920,93 @@ export const generateEventQrCode = async (
 	const url = buildEventCalendarUrl(event);
 
 	return generateQrCodeOutput(url, options, 'event');
+};
+
+export type TSocialPlatform =
+	| 'instagram'
+	| 'tiktok'
+	| 'youtube'
+	| 'linkedin'
+	| 'facebook'
+	| 'twitter'
+	| 'telegram';
+
+export type TSocialQrPayload = {
+	platform: TSocialPlatform;
+	username: string;
+};
+
+const SOCIAL_PLATFORMS: TSocialPlatform[] = [
+	'instagram',
+	'tiktok',
+	'youtube',
+	'linkedin',
+	'facebook',
+	'twitter',
+	'telegram'
+];
+
+const buildSocialProfileUrl = (platform: TSocialPlatform, username: string): string => {
+	const handle = username.replace(/^@/, '');
+
+	switch (platform) {
+		case 'instagram':
+			return `https://instagram.com/${handle}`;
+		case 'tiktok':
+			return `https://tiktok.com/@${handle}`;
+		case 'youtube':
+			return handle.startsWith('UC')
+				? `https://youtube.com/channel/${handle}`
+				: `https://youtube.com/@${handle}`;
+		case 'linkedin':
+			return `https://linkedin.com/in/${handle}`;
+		case 'facebook':
+			return `https://facebook.com/${handle}`;
+		case 'twitter':
+			return `https://x.com/${handle}`;
+		case 'telegram':
+			return `https://t.me/${handle}`;
+	}
+};
+
+export const validateSocialQrPayload = (body: unknown): TSocialQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (
+		typeof payload?.platform !== 'string' ||
+		!SOCIAL_PLATFORMS.includes(payload.platform as TSocialPlatform)
+	) {
+		throw new InvalidParameterException(
+			`platform wajib diisi dan harus salah satu dari: ${SOCIAL_PLATFORMS.join(', ')}`
+		);
+	}
+
+	if (typeof payload?.username !== 'string' || payload.username.trim() === '') {
+		throw new InvalidParameterException('username wajib diisi dan berupa string');
+	}
+
+	const username = payload.username.trim().replace(/^@/, '');
+
+	if (!/^[a-zA-Z0-9._-]{1,50}$/.test(username) && !/^UC[\w-]{20,}$/.test(username)) {
+		throw new InvalidParameterException('username tidak valid');
+	}
+
+	return {
+		platform: payload.platform as TSocialPlatform,
+		username
+	};
+};
+
+export const buildSocialQrUrl = (social: TSocialQrPayload): string =>
+	buildSocialProfileUrl(social.platform, social.username);
+
+export const generateSocialQrCode = async (
+	social: TSocialQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildSocialQrUrl(social);
+
+	return generateQrCodeOutput(url, options, 'social');
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {

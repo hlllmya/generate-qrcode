@@ -7,6 +7,7 @@ import {
 	buildMailtoUrl,
 	buildPhoneQrPayload,
 	buildSmsQrPayload,
+	buildSocialQrUrl,
 	buildUtmUrl,
 	buildVcardQrPayload,
 	buildWhatsAppUrl,
@@ -27,6 +28,7 @@ import {
 	validateQrCodeOptions,
 	validateQrCodeUrl,
 	validateSmsQrPayload,
+	validateSocialQrPayload,
 	validateTextQrPayload,
 	validateUtmQrPayload,
 	validateVcardQrPayload,
@@ -46,6 +48,7 @@ const QR_CODE_TYPES: TQrCodeType[] = [
 	'sms',
 	'utm',
 	'event',
+	'social',
 	'batch'
 ];
 
@@ -99,6 +102,8 @@ const resolveQrContent = (type: TQrCodeType, data: unknown): string => {
 			return buildUtmUrl(validateUtmQrPayload(data));
 		case 'event':
 			return buildEventCalendarUrl(validateEventQrPayload(data));
+		case 'social':
+			return buildSocialQrUrl(validateSocialQrPayload(data));
 		default:
 			throw new InvalidParameterException('type batch harus menggunakan endpoint /generate-batch');
 	}
@@ -168,7 +173,8 @@ export const getQrCodeApiInfo = () => ({
 		generatePhone: { method: 'POST', path: '/qrcode/generate-phone' },
 		generateSms: { method: 'POST', path: '/qrcode/generate-sms' },
 		generateUtm: { method: 'POST', path: '/qrcode/generate-utm' },
-		generateEvent: { method: 'POST', path: '/qrcode/generate-event' }
+		generateEvent: { method: 'POST', path: '/qrcode/generate-event' },
+		generateSocial: { method: 'POST', path: '/qrcode/generate-social' }
 	},
 	options: {
 		width: '100-2000 (px)',
