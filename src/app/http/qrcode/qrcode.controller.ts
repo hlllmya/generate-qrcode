@@ -2,17 +2,25 @@ import { NextFunction, Request, Response } from 'express';
 import {
 	generateBatchQrCodes,
 	generateEmailQrCode,
+	generateLocationQrCode,
+	generatePhoneQrCode,
 	generateQrCodeFromUrl,
+	generateSmsQrCode,
 	generateTextQrCode,
+	generateUtmQrCode,
 	generateVcardQrCode,
 	generateWhatsAppQrCode,
 	generateWifiQrCode,
 	parseQrCodeOptionsFromQuery,
 	validateBatchQrPayload,
 	validateEmailQrPayload,
+	validateLocationQrPayload,
+	validatePhoneQrPayload,
 	validateQrCodeOptions,
 	validateQrCodeUrl,
+	validateSmsQrPayload,
 	validateTextQrPayload,
+	validateUtmQrPayload,
 	validateVcardQrPayload,
 	validateWhatsAppQrPayload,
 	validateWifiQrPayload
@@ -199,6 +207,70 @@ export const generateVcardQrCodeHandler = async (
 		const result = await generateVcardQrCode(contact, options);
 
 		sendQrCodeResponse(res, 'QR code kontak berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateLocationQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const location = validateLocationQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateLocationQrCode(location, options);
+
+		sendQrCodeResponse(res, 'QR code lokasi berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generatePhoneQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const phoneQr = validatePhoneQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generatePhoneQrCode(phoneQr, options);
+
+		sendQrCodeResponse(res, 'QR code telepon berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateSmsQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const sms = validateSmsQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateSmsQrCode(sms, options);
+
+		sendQrCodeResponse(res, 'QR code SMS berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateUtmQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const utm = validateUtmQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateUtmQrCode(utm, options);
+
+		sendQrCodeResponse(res, 'QR code UTM berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}

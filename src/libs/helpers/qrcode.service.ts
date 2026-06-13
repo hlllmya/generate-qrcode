@@ -2,7 +2,11 @@ import { APP_NAME, APP_VERSION } from '@/libs/config';
 import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterException';
 import {
 	BATCH_QR_MAX_ITEMS,
+	buildLocationQrPayload,
 	buildMailtoUrl,
+	buildPhoneQrPayload,
+	buildSmsQrPayload,
+	buildUtmUrl,
 	buildVcardQrPayload,
 	buildWhatsAppUrl,
 	buildWifiQrPayload,
@@ -16,9 +20,13 @@ import {
 	TQrCodeType,
 	validateBatchQrPayload,
 	validateEmailQrPayload,
+	validateLocationQrPayload,
+	validatePhoneQrPayload,
 	validateQrCodeOptions,
 	validateQrCodeUrl,
+	validateSmsQrPayload,
 	validateTextQrPayload,
+	validateUtmQrPayload,
 	validateVcardQrPayload,
 	validateWhatsAppQrPayload,
 	validateWifiQrPayload
@@ -31,6 +39,10 @@ const QR_CODE_TYPES: TQrCodeType[] = [
 	'vcard',
 	'whatsapp',
 	'email',
+	'location',
+	'phone',
+	'sms',
+	'utm',
 	'batch'
 ];
 
@@ -74,6 +86,14 @@ const resolveQrContent = (type: TQrCodeType, data: unknown): string => {
 			return buildWhatsAppUrl(validateWhatsAppQrPayload(data));
 		case 'email':
 			return buildMailtoUrl(validateEmailQrPayload(data));
+		case 'location':
+			return buildLocationQrPayload(validateLocationQrPayload(data));
+		case 'phone':
+			return buildPhoneQrPayload(validatePhoneQrPayload(data));
+		case 'sms':
+			return buildSmsQrPayload(validateSmsQrPayload(data));
+		case 'utm':
+			return buildUtmUrl(validateUtmQrPayload(data));
 		default:
 			throw new InvalidParameterException('type batch harus menggunakan endpoint /generate-batch');
 	}
@@ -138,7 +158,11 @@ export const getQrCodeApiInfo = () => ({
 		generateWhatsapp: { method: 'POST', path: '/qrcode/generate-whatsapp' },
 		generateEmail: { method: 'POST', path: '/qrcode/generate-email' },
 		generateWifi: { method: 'POST', path: '/qrcode/generate-wifi' },
-		generateVcard: { method: 'POST', path: '/qrcode/generate-vcard' }
+		generateVcard: { method: 'POST', path: '/qrcode/generate-vcard' },
+		generateLocation: { method: 'POST', path: '/qrcode/generate-location' },
+		generatePhone: { method: 'POST', path: '/qrcode/generate-phone' },
+		generateSms: { method: 'POST', path: '/qrcode/generate-sms' },
+		generateUtm: { method: 'POST', path: '/qrcode/generate-utm' }
 	},
 	options: {
 		width: '100-2000 (px)',
@@ -158,6 +182,21 @@ export const getQrCodeApiInfo = () => ({
 		createWhatsapp: {
 			type: 'whatsapp',
 			data: { phone: '6281234567890', message: 'Halo' },
+			options: { format: 'png' }
+		},
+		createLocation: {
+			type: 'location',
+			data: { latitude: -6.2088, longitude: 106.8456, label: 'Jakarta' },
+			options: { format: 'png' }
+		},
+		createUtm: {
+			type: 'utm',
+			data: {
+				url: 'https://contoh.com/promo',
+				utm_source: 'qrcode',
+				utm_medium: 'print',
+				utm_campaign: 'summer-sale'
+			},
 			options: { format: 'png' }
 		},
 		preview: '/qrcode/preview?url=https://contoh.com&format=png&width=300'

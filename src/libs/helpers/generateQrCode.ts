@@ -3,7 +3,18 @@ import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterExc
 
 export type TQrCodeFormat = 'svg' | 'png';
 export type TResponseMode = 'json' | 'binary' | 'dataUrl';
-export type TQrCodeType = 'url' | 'text' | 'wifi' | 'vcard' | 'whatsapp' | 'email' | 'batch';
+export type TQrCodeType =
+	| 'url'
+	| 'text'
+	| 'wifi'
+	| 'vcard'
+	| 'whatsapp'
+	| 'email'
+	| 'location'
+	| 'phone'
+	| 'sms'
+	| 'utm'
+	| 'batch';
 
 export type TQrCodeOptions = {
 	width?: number;
@@ -644,6 +655,192 @@ export const generateVcardQrCode = async (
 	const payload = buildVcardQrPayload(contact);
 
 	return generateQrCodeOutput(payload, options, 'vcard');
+};
+
+const validatePhoneNumber = (phone: unknown, fieldName = 'phone'): string => {
+	if (typeof phone !== 'string' || phone.trim() === '') {
+		throw new InvalidParameterException(`${fieldName} wajib diisi dan berupa string`);
+	}
+
+	const normalized = phone.replace(/[\s\-+()]/g, '');
+	if (!/^\d{8,15}$/.test(normalized)) {
+		throw new InvalidParameterException(`${fieldName} harus berupa nomor valid (8-15 digit)`);
+	}
+
+	return normalized;
+};
+
+export type TLocationQrPayload = {
+	latitude: number;
+	longitude: number;
+	label?: string;
+};
+
+export const validateLocationQrPayload = (body: unknown): TLocationQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (typeof payload?.latitude !== 'number' || payload.latitude < -90 || payload.latitude > 90) {
+		throw new InvalidParameterException('latitude wajib diisi dan harus antara -90 hingga 90');
+	}
+
+	if (typeof payload?.longitude !== 'number' || payload.longitude < -180 || payload.longitude > 180) {
+		throw new InvalidParameterException('longitude wajib diisi dan harus antara -180 hingga 180');
+	}
+
+	return {
+		latitude: payload.latitude,
+		longitude: payload.longitude,
+		label: validateOptionalString(payload.label, 'label')
+	};
+};
+
+export const buildLocationQrPayload = (location: TLocationQrPayload): string => {
+	const base = `geo:${location.latitude},${location.longitude}`;
+
+	if (!location.label) {
+		return base;
+	}
+
+	return `${base}?q=${encodeURIComponent(location.label)}`;
+};
+
+export const generateLocationQrCode = async (
+	location: TLocationQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const payload = buildLocationQrPayload(location);
+
+	return generateQrCodeOutput(payload, options, 'location');
+};
+
+export type TPhoneQrPayload = {
+	phone: string;
+};
+
+export const validatePhoneQrPayload = (body: unknown): TPhoneQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	return { phone: validatePhoneNumber(payload?.phone) };
+};
+
+export const buildPhoneQrPayload = (phoneQr: TPhoneQrPayload): string =>
+	`tel:+${phoneQr.phone}`;
+
+export const generatePhoneQrCode = async (
+	phoneQr: TPhoneQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const payload = buildPhoneQrPayload(phoneQr);
+
+	return generateQrCodeOutput(payload, options, 'phone');
+};
+
+export type TSmsQrPayload = {
+	phone: string;
+	message: string;
+};
+
+export const validateSmsQrPayload = (body: unknown): TSmsQrPayload => {
+	const payload = body as Record<string, unknown>;
+	const message = typeof payload?.message === 'string' ? payload.message : '';
+
+	if (message.length > 500) {
+		throw new InvalidParameterException('message maksimal 500 karakter');
+	}
+
+	return {
+		phone: validatePhoneNumber(payload?.phone),
+		message
+	};
+};
+
+export const buildSmsQrPayload = (sms: TSmsQrPayload): string => {
+	const base = `sms:+${sms.phone}`;
+
+	if (!sms.message) {
+		return base;
+	}
+
+	return `${base}?body=${encodeURIComponent(sms.message)}`;
+};
+
+export const generateSmsQrCode = async (
+	sms: TSmsQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const payload = buildSmsQrPayload(sms);
+
+	return generateQrCodeOutput(payload, options, 'sms');
+};
+
+export type TUtmQrPayload = {
+	url: string;
+	utm_source?: string;
+	utm_medium?: string;
+	utm_campaign?: string;
+	utm_term?: string;
+	utm_content?: string;
+};
+
+const validateUtmParam = (value: unknown, fieldName: string): string | undefined => {
+	if (value === undefined || value === null || value === '') {
+		return undefined;
+	}
+
+	if (typeof value !== 'string' || value.trim() === '') {
+		throw new InvalidParameterException(`${fieldName} harus berupa string`);
+	}
+
+	if (value.length > 100) {
+		throw new InvalidParameterException(`${fieldName} maksimal 100 karakter`);
+	}
+
+	return value.trim();
+};
+
+export const validateUtmQrPayload = (body: unknown): TUtmQrPayload => {
+	const payload = body as Record<string, unknown>;
+	const url = validateQrCodeUrl(payload?.url);
+
+	const utm = {
+		utm_source: validateUtmParam(payload.utm_source, 'utm_source'),
+		utm_medium: validateUtmParam(payload.utm_medium, 'utm_medium'),
+		utm_campaign: validateUtmParam(payload.utm_campaign, 'utm_campaign'),
+		utm_term: validateUtmParam(payload.utm_term, 'utm_term'),
+		utm_content: validateUtmParam(payload.utm_content, 'utm_content')
+	};
+
+	if (!utm.utm_source && !utm.utm_medium && !utm.utm_campaign && !utm.utm_term && !utm.utm_content) {
+		throw new InvalidParameterException(
+			'Minimal satu parameter UTM wajib diisi (utm_source, utm_medium, utm_campaign, utm_term, atau utm_content)'
+		);
+	}
+
+	return { url, ...utm };
+};
+
+export const buildUtmUrl = (utm: TUtmQrPayload): string => {
+	const parsed = new URL(utm.url);
+	const params = new URLSearchParams(parsed.search);
+
+	if (utm.utm_source) params.set('utm_source', utm.utm_source);
+	if (utm.utm_medium) params.set('utm_medium', utm.utm_medium);
+	if (utm.utm_campaign) params.set('utm_campaign', utm.utm_campaign);
+	if (utm.utm_term) params.set('utm_term', utm.utm_term);
+	if (utm.utm_content) params.set('utm_content', utm.utm_content);
+
+	parsed.search = params.toString();
+
+	return parsed.toString();
+};
+
+export const generateUtmQrCode = async (
+	utm: TUtmQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildUtmUrl(utm);
+
+	return generateQrCodeOutput(url, options, 'utm');
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {
