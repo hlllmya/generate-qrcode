@@ -2,6 +2,7 @@ import { APP_NAME, APP_VERSION } from '@/libs/config';
 import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterException';
 import {
 	BATCH_QR_MAX_ITEMS,
+	buildAppStoreUrl,
 	buildEventCalendarUrl,
 	buildLocationQrPayload,
 	buildMailtoUrl,
@@ -20,6 +21,7 @@ import {
 	TQrCodeOptions,
 	TQrCodeResult,
 	TQrCodeType,
+	validateAppQrPayload,
 	validateBatchQrPayload,
 	validateEmailQrPayload,
 	validateEventQrPayload,
@@ -49,6 +51,7 @@ const QR_CODE_TYPES: TQrCodeType[] = [
 	'utm',
 	'event',
 	'social',
+	'app',
 	'batch'
 ];
 
@@ -104,6 +107,8 @@ const resolveQrContent = (type: TQrCodeType, data: unknown): string => {
 			return buildEventCalendarUrl(validateEventQrPayload(data));
 		case 'social':
 			return buildSocialQrUrl(validateSocialQrPayload(data));
+		case 'app':
+			return buildAppStoreUrl(validateAppQrPayload(data));
 		default:
 			throw new InvalidParameterException('type batch harus menggunakan endpoint /generate-batch');
 	}
@@ -174,7 +179,8 @@ export const getQrCodeApiInfo = () => ({
 		generateSms: { method: 'POST', path: '/qrcode/generate-sms' },
 		generateUtm: { method: 'POST', path: '/qrcode/generate-utm' },
 		generateEvent: { method: 'POST', path: '/qrcode/generate-event' },
-		generateSocial: { method: 'POST', path: '/qrcode/generate-social' }
+		generateSocial: { method: 'POST', path: '/qrcode/generate-social' },
+		generateApp: { method: 'POST', path: '/qrcode/generate-app' }
 	},
 	options: {
 		width: '100-2000 (px)',

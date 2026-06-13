@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
 	createQrCodeHandler,
 	generateBatchQrCodeHandler,
+	generateAppQrCodeHandler,
 	generateEmailQrCodeHandler,
 	generateEventQrCodeHandler,
 	generateLocationQrCodeHandler,
@@ -36,5 +37,6 @@ qrcodeRouter.post('/generate-sms', generateSmsQrCodeHandler);
 qrcodeRouter.post('/generate-utm', generateUtmQrCodeHandler);
 qrcodeRouter.post('/generate-event', generateEventQrCodeHandler);
 qrcodeRouter.post('/generate-social', generateSocialQrCodeHandler);
+qrcodeRouter.post('/generate-app', generateAppQrCodeHandler);
 
 export default qrcodeRouter;

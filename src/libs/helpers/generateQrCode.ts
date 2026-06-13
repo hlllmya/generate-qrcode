@@ -16,6 +16,7 @@ export type TQrCodeType =
 	| 'utm'
 	| 'event'
 	| 'social'
+	| 'app'
 	| 'batch';
 
 export type TQrCodeOptions = {
@@ -1007,6 +1008,64 @@ export const generateSocialQrCode = async (
 	const url = buildSocialQrUrl(social);
 
 	return generateQrCodeOutput(url, options, 'social');
+};
+
+export type TAppStorePlatform = 'ios' | 'android';
+
+export type TAppQrPayload = {
+	platform: TAppStorePlatform;
+	appId: string;
+};
+
+const APP_STORE_PLATFORMS: TAppStorePlatform[] = ['ios', 'android'];
+
+export const validateAppQrPayload = (body: unknown): TAppQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (
+		typeof payload?.platform !== 'string' ||
+		!APP_STORE_PLATFORMS.includes(payload.platform as TAppStorePlatform)
+	) {
+		throw new InvalidParameterException(
+			`platform wajib diisi dan harus salah satu dari: ${APP_STORE_PLATFORMS.join(', ')}`
+		);
+	}
+
+	if (typeof payload?.appId !== 'string' || payload.appId.trim() === '') {
+		throw new InvalidParameterException('appId wajib diisi dan berupa string');
+	}
+
+	const appId = payload.appId.trim();
+	const platform = payload.platform as TAppStorePlatform;
+
+	if (platform === 'ios' && !/^\d{5,12}$/.test(appId)) {
+		throw new InvalidParameterException('appId iOS harus berupa angka App Store ID (5-12 digit)');
+	}
+
+	if (platform === 'android' && !/^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$/.test(appId)) {
+		throw new InvalidParameterException(
+			'appId Android harus berupa package name valid (contoh: com.contoh.app)'
+		);
+	}
+
+	return { platform, appId };
+};
+
+export const buildAppStoreUrl = (app: TAppQrPayload): string => {
+	if (app.platform === 'ios') {
+		return `https://apps.apple.com/app/id${app.appId}`;
+	}
+
+	return `https://play.google.com/store/apps/details?id=${app.appId}`;
+};
+
+export const generateAppQrCode = async (
+	app: TAppQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildAppStoreUrl(app);
+
+	return generateQrCodeOutput(url, options, 'app');
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {
