@@ -10,6 +10,7 @@ httpApp.use('/qrcode1', qrcodeRouter);
 httpApp.use('/qrcode2', qrcodeRouter);
 httpApp.use('/qrcode3', qrcodeRouter);
 httpApp.use('/qrcode4', qrcodeRouter);
+httpApp.use('/qrcode5', qrcodeRouter);
 httpApp.use(errorHandler);
 
 export default httpApp;
