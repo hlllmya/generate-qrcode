@@ -1,16 +1,26 @@
 import { Router } from 'express';
 import {
+	createQrCodeHandler,
 	generateBatchQrCodeHandler,
 	generateEmailQrCodeHandler,
+	generateLocationQrCodeHandler,
+	generatePhoneQrCodeHandler,
 	generateQrCodeHandler,
+	generateSmsQrCodeHandler,
 	generateTextQrCodeHandler,
+	generateUtmQrCodeHandler,
 	generateVcardQrCodeHandler,
 	generateWhatsAppQrCodeHandler,
-	generateWifiQrCodeHandler
+	generateWifiQrCodeHandler,
+	getQrCodeInfoHandler,
+	previewQrCodeHandler
 } from './qrcode.controller';
 
 const qrcodeRouter = Router();
 
+qrcodeRouter.get('/', getQrCodeInfoHandler);
+qrcodeRouter.get('/preview', previewQrCodeHandler);
+qrcodeRouter.post('/create', createQrCodeHandler);
 qrcodeRouter.post('/generate', generateQrCodeHandler);
 qrcodeRouter.post('/generate-batch', generateBatchQrCodeHandler);
 qrcodeRouter.post('/generate-text', generateTextQrCodeHandler);
@@ -18,5 +28,9 @@ qrcodeRouter.post('/generate-whatsapp', generateWhatsAppQrCodeHandler);
 qrcodeRouter.post('/generate-email', generateEmailQrCodeHandler);
 qrcodeRouter.post('/generate-wifi', generateWifiQrCodeHandler);
 qrcodeRouter.post('/generate-vcard', generateVcardQrCodeHandler);
+qrcodeRouter.post('/generate-location', generateLocationQrCodeHandler);
+qrcodeRouter.post('/generate-phone', generatePhoneQrCodeHandler);
+qrcodeRouter.post('/generate-sms', generateSmsQrCodeHandler);
+qrcodeRouter.post('/generate-utm', generateUtmQrCodeHandler);
 
 export default qrcodeRouter;
