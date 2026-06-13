@@ -1,59 +1,18 @@
 import { APP_NAME, APP_VERSION } from '@/libs/config';
 import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterException';
+import { generateBatchQrCodes, validateBatchQrPayload } from './batch';
+import { generateQrCodeFromUrl, generateQrCodeOutput } from './core';
+import { resolveQrContent } from './registry';
 import {
 	BATCH_QR_MAX_ITEMS,
-	buildAppStoreUrl,
-	buildEventCalendarUrl,
-	buildLocationQrPayload,
-	buildMailtoUrl,
-	buildPhoneQrPayload,
-	buildSmsQrPayload,
-	buildSocialQrUrl,
-	buildUtmUrl,
-	buildVcardQrPayload,
-	buildWhatsAppUrl,
-	buildWifiQrPayload,
-	generateBatchQrCodes,
-	generateQrCodeFromUrl,
-	generateQrCodeOutput,
+	QR_CODE_TYPES,
 	TBatchQrItem,
 	TBatchQrResultItem,
 	TQrCodeOptions,
 	TQrCodeResult,
-	TQrCodeType,
-	validateAppQrPayload,
-	validateBatchQrPayload,
-	validateEmailQrPayload,
-	validateEventQrPayload,
-	validateLocationQrPayload,
-	validatePhoneQrPayload,
-	validateQrCodeOptions,
-	validateQrCodeUrl,
-	validateSmsQrPayload,
-	validateSocialQrPayload,
-	validateTextQrPayload,
-	validateUtmQrPayload,
-	validateVcardQrPayload,
-	validateWhatsAppQrPayload,
-	validateWifiQrPayload
-} from '@/libs/helpers/generateQrCode';
-
-const QR_CODE_TYPES: TQrCodeType[] = [
-	'url',
-	'text',
-	'wifi',
-	'vcard',
-	'whatsapp',
-	'email',
-	'location',
-	'phone',
-	'sms',
-	'utm',
-	'event',
-	'social',
-	'app',
-	'batch'
-];
+	TQrCodeType
+} from './types';
+import { validateQrCodeOptions } from './validators';
 
 export type TUnifiedQrPayload = {
 	type: TQrCodeType;
@@ -79,39 +38,6 @@ export const validateUnifiedQrPayload = (body: unknown): TUnifiedQrPayload => {
 		data: payload.data,
 		options: validateQrCodeOptions(payload.options)
 	};
-};
-
-const resolveQrContent = (type: TQrCodeType, data: unknown): string => {
-	switch (type) {
-		case 'url':
-			return validateQrCodeUrl((data as Record<string, unknown>).url);
-		case 'text':
-			return validateTextQrPayload(data).text;
-		case 'wifi':
-			return buildWifiQrPayload(validateWifiQrPayload(data));
-		case 'vcard':
-			return buildVcardQrPayload(validateVcardQrPayload(data));
-		case 'whatsapp':
-			return buildWhatsAppUrl(validateWhatsAppQrPayload(data));
-		case 'email':
-			return buildMailtoUrl(validateEmailQrPayload(data));
-		case 'location':
-			return buildLocationQrPayload(validateLocationQrPayload(data));
-		case 'phone':
-			return buildPhoneQrPayload(validatePhoneQrPayload(data));
-		case 'sms':
-			return buildSmsQrPayload(validateSmsQrPayload(data));
-		case 'utm':
-			return buildUtmUrl(validateUtmQrPayload(data));
-		case 'event':
-			return buildEventCalendarUrl(validateEventQrPayload(data));
-		case 'social':
-			return buildSocialQrUrl(validateSocialQrPayload(data));
-		case 'app':
-			return buildAppStoreUrl(validateAppQrPayload(data));
-		default:
-			throw new InvalidParameterException('type batch harus menggunakan endpoint /generate-batch');
-	}
 };
 
 export const generateQrByType = async (

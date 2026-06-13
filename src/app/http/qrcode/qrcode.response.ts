@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { TQrCodeOptions, TQrCodeResult, TResponseMode } from '@/libs/helpers/generateQrCode';
+import { TBatchQrResultItem, TQrCodeOptions, TQrCodeResult, TQrCodeType, TResponseMode } from '@/libs/helpers/qrcode/types';
 
 export const resolveResponseMode = (options?: TQrCodeOptions): TResponseMode =>
 	options?.responseMode ?? 'json';
@@ -36,4 +36,22 @@ export const sendQrCodeResponse = (
 	}
 
 	res.status(200).json(payload);
+};
+
+export const sendBatchQrResponse = (
+	res: Response,
+	results: TBatchQrResultItem[],
+	type?: TQrCodeType
+): void => {
+	const successCount = results.filter((item) => item.success).length;
+
+	res.status(200).json({
+		success: true,
+		message: `${successCount} dari ${results.length} QR code berhasil dibuat`,
+		...(type ? { type } : {}),
+		total: results.length,
+		successCount,
+		failedCount: results.length - successCount,
+		items: results
+	});
 };
