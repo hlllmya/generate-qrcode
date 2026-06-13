@@ -2,6 +2,9 @@ import QRCode from 'qrcode';
 import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterException';
 
 export type TQrCodeFormat = 'svg' | 'png';
+export type TResponseMode = 'json' | 'binary' | 'dataUrl';
+export type TQrCodeType = 'url' | 'text' | 'wifi' | 'vcard' | 'whatsapp' | 'email' | 'batch';
+
 export type TQrCodeOptions = {
 	width?: number;
 	margin?: number;
@@ -9,12 +12,17 @@ export type TQrCodeOptions = {
 	darkColor?: string;
 	lightColor?: string;
 	format?: TQrCodeFormat;
+	responseMode?: TResponseMode;
 };
 
 export type TQrCodeResult = {
 	base64: string;
+	dataUrl: string;
 	format: TQrCodeFormat;
 	mimeType: string;
+	content: string;
+	sizeBytes: number;
+	filename: string;
 };
 
 export const BATCH_QR_MAX_ITEMS = 50;
@@ -83,8 +91,56 @@ export const validateQrCodeOptions = (options: unknown): TQrCodeOptions => {
 		validated.format = raw.format;
 	}
 
+	if (raw.responseMode !== undefined) {
+		if (raw.responseMode !== 'json' && raw.responseMode !== 'binary' && raw.responseMode !== 'dataUrl') {
+			throw new InvalidParameterException('responseMode harus json, binary, atau dataUrl');
+		}
+		validated.responseMode = raw.responseMode;
+	}
+
 	return validated;
 };
+
+export const parseQrCodeOptionsFromQuery = (query: Record<string, unknown>): TQrCodeOptions => {
+	const raw: Record<string, unknown> = {};
+
+	if (query.format !== undefined) raw.format = query.format;
+	if (query.responseMode !== undefined) raw.responseMode = query.responseMode;
+	if (query.errorCorrectionLevel !== undefined) raw.errorCorrectionLevel = query.errorCorrectionLevel;
+	if (query.darkColor !== undefined) raw.darkColor = query.darkColor;
+	if (query.lightColor !== undefined) raw.lightColor = query.lightColor;
+
+	if (query.width !== undefined) {
+		const width = Number(query.width);
+		if (!Number.isNaN(width)) raw.width = width;
+	}
+
+	if (query.margin !== undefined) {
+		const margin = Number(query.margin);
+		if (!Number.isNaN(margin)) raw.margin = margin;
+	}
+
+	return validateQrCodeOptions(raw);
+};
+
+const buildQrFilename = (type: string, format: TQrCodeFormat): string =>
+	`qrcode-${type}-${Date.now()}.${format}`;
+
+const buildEnhancedResult = (
+	content: string,
+	format: TQrCodeFormat,
+	mimeType: string,
+	base64: string,
+	type = 'content'
+): TQrCodeResult => ({
+	base64,
+	dataUrl: `data:${mimeType};base64,${base64}`,
+	format,
+	mimeType,
+	content,
+	sizeBytes: Buffer.byteLength(base64, 'base64'),
+	filename: buildQrFilename(type, format)
+});
 
 const buildQrCodeRenderOptions = (options?: TQrCodeOptions) => {
 	const renderOptions: QRCode.QRCodeToStringOptions & QRCode.QRCodeToBufferOptions = {
@@ -168,23 +224,20 @@ export const generateQrCodePngFromContent = async (
 
 export const generateQrCodeOutput = async (
 	content: string,
-	options?: TQrCodeOptions
+	options?: TQrCodeOptions,
+	type = 'content'
 ): Promise<TQrCodeResult> => {
 	const format = options?.format ?? 'svg';
 
 	if (format === 'png') {
-		return {
-			base64: await generateQrCodePngFromContent(content, options),
-			format: 'png',
-			mimeType: 'image/png'
-		};
+		const base64 = await generateQrCodePngFromContent(content, options);
+
+		return buildEnhancedResult(content, 'png', 'image/png', base64, type);
 	}
 
-	return {
-		base64: svgToBase64(await generateQrCodeSvgFromContent(content, options)),
-		format: 'svg',
-		mimeType: 'image/svg+xml'
-	};
+	const base64 = svgToBase64(await generateQrCodeSvgFromContent(content, options));
+
+	return buildEnhancedResult(content, 'svg', 'image/svg+xml', base64, type);
 };
 
 export const generateQrCodeSvg = async (
@@ -210,14 +263,15 @@ export const generateQrCodeFromUrl = async (
 ): Promise<TQrCodeResult> => {
 	const validatedUrl = validateQrCodeUrl(url);
 
-	return generateQrCodeOutput(validatedUrl, options);
+	return generateQrCodeOutput(validatedUrl, options, 'url');
 };
 
 export const generateQrCodeFromContent = async (
 	content: string,
-	options?: TQrCodeOptions
+	options?: TQrCodeOptions,
+	type = 'content'
 ): Promise<TQrCodeResult> => {
-	return generateQrCodeOutput(content, options);
+	return generateQrCodeOutput(content, options, type);
 };
 
 export type TBatchQrItem = {
@@ -230,9 +284,13 @@ export type TBatchQrResultItem = {
 	url: string;
 	success: boolean;
 	message?: string;
+	content?: string;
 	format?: TQrCodeFormat;
 	mimeType?: string;
+	dataUrl?: string;
 	base64?: string;
+	sizeBytes?: number;
+	filename?: string;
 };
 
 export const validateBatchQrPayload = (
@@ -281,9 +339,13 @@ export const generateBatchQrCodes = async (
 					id: item.id,
 					url: item.url,
 					success: true,
+					content: result.content,
 					format: result.format,
 					mimeType: result.mimeType,
-					base64: result.base64
+					dataUrl: result.dataUrl,
+					base64: result.base64,
+					sizeBytes: result.sizeBytes,
+					filename: result.filename
 				};
 			} catch (error) {
 				return {
@@ -319,7 +381,7 @@ export const generateTextQrCode = async (
 	text: string,
 	options?: TQrCodeOptions
 ): Promise<TQrCodeResult> => {
-	return generateQrCodeFromContent(text, options);
+	return generateQrCodeFromContent(text, options, 'text');
 };
 
 export type TWhatsAppQrPayload = {
@@ -363,7 +425,7 @@ export const generateWhatsAppQrCode = async (
 ): Promise<TQrCodeResult> => {
 	const url = buildWhatsAppUrl(whatsapp);
 
-	return generateQrCodeFromContent(url, options);
+	return generateQrCodeOutput(url, options, 'whatsapp');
 };
 
 export type TEmailQrPayload = {
@@ -420,7 +482,7 @@ export const generateEmailQrCode = async (
 ): Promise<TQrCodeResult> => {
 	const url = buildMailtoUrl(emailQr);
 
-	return generateQrCodeFromContent(url, options);
+	return generateQrCodeOutput(url, options, 'email');
 };
 
 export type TWifiEncryption = 'WPA' | 'WEP' | 'nopass';
@@ -477,7 +539,7 @@ export const generateWifiQrCode = async (
 ): Promise<TQrCodeResult> => {
 	const payload = buildWifiQrPayload(wifi);
 
-	return generateQrCodeFromContent(payload, options);
+	return generateQrCodeOutput(payload, options, 'wifi');
 };
 
 export type TVcardQrPayload = {
@@ -581,7 +643,7 @@ export const generateVcardQrCode = async (
 ): Promise<TQrCodeResult> => {
 	const payload = buildVcardQrPayload(contact);
 
-	return generateQrCodeFromContent(payload, options);
+	return generateQrCodeOutput(payload, options, 'vcard');
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {

@@ -1,16 +1,22 @@
 import { Router } from 'express';
 import {
+	createQrCodeHandler,
 	generateBatchQrCodeHandler,
 	generateEmailQrCodeHandler,
 	generateQrCodeHandler,
 	generateTextQrCodeHandler,
 	generateVcardQrCodeHandler,
 	generateWhatsAppQrCodeHandler,
-	generateWifiQrCodeHandler
+	generateWifiQrCodeHandler,
+	getQrCodeInfoHandler,
+	previewQrCodeHandler
 } from './qrcode.controller';
 
 const qrcodeRouter = Router();
 
+qrcodeRouter.get('/', getQrCodeInfoHandler);
+qrcodeRouter.get('/preview', previewQrCodeHandler);
+qrcodeRouter.post('/create', createQrCodeHandler);
 qrcodeRouter.post('/generate', generateQrCodeHandler);
 qrcodeRouter.post('/generate-batch', generateBatchQrCodeHandler);
 qrcodeRouter.post('/generate-text', generateTextQrCodeHandler);

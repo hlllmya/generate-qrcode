@@ -7,7 +7,7 @@ import {
 	generateVcardQrCode,
 	generateWhatsAppQrCode,
 	generateWifiQrCode,
-	TQrCodeResult,
+	parseQrCodeOptionsFromQuery,
 	validateBatchQrPayload,
 	validateEmailQrPayload,
 	validateQrCodeOptions,
@@ -17,19 +17,72 @@ import {
 	validateWhatsAppQrPayload,
 	validateWifiQrPayload
 } from '@/libs/helpers/generateQrCode';
+import {
+	generateBatchFromUnifiedData,
+	generateQrByType,
+	getQrCodeApiInfo,
+	previewUrlQrCode,
+	validateUnifiedQrPayload
+} from '@/libs/helpers/qrcode.service';
+import { resolveResponseMode, sendQrCodeResponse } from './qrcode.response';
 
-const sendQrCodeResponse = (
-	res: Response,
-	message: string,
-	result: TQrCodeResult
-): void => {
+export const getQrCodeInfoHandler = (_req: Request, res: Response): void => {
 	res.status(200).json({
 		success: true,
-		message,
-		format: result.format,
-		mimeType: result.mimeType,
-		base64: result.base64
+		data: getQrCodeApiInfo()
 	});
+};
+
+export const createQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const { type, data, options } = validateUnifiedQrPayload(req.body);
+		const responseMode = resolveResponseMode(options);
+
+		if (type === 'batch') {
+			const results = await generateBatchFromUnifiedData(data, options);
+			const successCount = results.filter((item) => item.success).length;
+
+			res.status(200).json({
+				success: true,
+				message: `${successCount} dari ${results.length} QR code berhasil dibuat`,
+				type,
+				total: results.length,
+				successCount,
+				failedCount: results.length - successCount,
+				items: results
+			});
+			return;
+		}
+
+		const result = await generateQrByType(type, data, options);
+		sendQrCodeResponse(res, `QR code ${type} berhasil dibuat`, result, responseMode);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const previewQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const url = validateQrCodeUrl(req.query.url, 'url');
+		const options = parseQrCodeOptionsFromQuery(req.query as Record<string, unknown>);
+		const responseMode = resolveResponseMode({
+			...options,
+			responseMode: options.responseMode ?? 'binary'
+		});
+		const result = await previewUrlQrCode(url, options);
+
+		sendQrCodeResponse(res, 'QR code preview berhasil dibuat', result, responseMode);
+	} catch (error) {
+		next(error);
+	}
 };
 
 export const generateQrCodeHandler = async (
@@ -42,7 +95,7 @@ export const generateQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateQrCodeFromUrl(url, options);
 
-		sendQrCodeResponse(res, 'QR code berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
@@ -81,7 +134,7 @@ export const generateTextQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateTextQrCode(text, options);
 
-		sendQrCodeResponse(res, 'QR code teks berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code teks berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
@@ -97,7 +150,7 @@ export const generateWhatsAppQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateWhatsAppQrCode(whatsapp, options);
 
-		sendQrCodeResponse(res, 'QR code WhatsApp berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code WhatsApp berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
@@ -113,7 +166,7 @@ export const generateEmailQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateEmailQrCode(emailQr, options);
 
-		sendQrCodeResponse(res, 'QR code email berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code email berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
@@ -129,7 +182,7 @@ export const generateWifiQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateWifiQrCode(wifi, options);
 
-		sendQrCodeResponse(res, 'QR code WiFi berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code WiFi berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
@@ -145,7 +198,7 @@ export const generateVcardQrCodeHandler = async (
 		const options = validateQrCodeOptions(req.body?.options);
 		const result = await generateVcardQrCode(contact, options);
 
-		sendQrCodeResponse(res, 'QR code kontak berhasil dibuat', result);
+		sendQrCodeResponse(res, 'QR code kontak berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}
