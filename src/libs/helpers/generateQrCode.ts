@@ -14,6 +14,8 @@ export type TQrCodeType =
 	| 'phone'
 	| 'sms'
 	| 'utm'
+	| 'event'
+	| 'social'
 	| 'batch';
 
 export type TQrCodeOptions = {
@@ -841,6 +843,170 @@ export const generateUtmQrCode = async (
 	const url = buildUtmUrl(utm);
 
 	return generateQrCodeOutput(url, options, 'utm');
+};
+
+export type TEventQrPayload = {
+	title: string;
+	startAt: string;
+	endAt: string;
+	description?: string;
+	location?: string;
+};
+
+const formatGoogleCalendarDate = (value: string, fieldName: string): string => {
+	const date = new Date(value);
+
+	if (Number.isNaN(date.getTime())) {
+		throw new InvalidParameterException(`${fieldName} harus berupa tanggal/waktu valid (ISO 8601)`);
+	}
+
+	return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+};
+
+export const validateEventQrPayload = (body: unknown): TEventQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	const title = validateOptionalString(payload?.title, 'title');
+	if (!title) {
+		throw new InvalidParameterException('title wajib diisi dan berupa string');
+	}
+
+	if (typeof payload?.startAt !== 'string' || payload.startAt.trim() === '') {
+		throw new InvalidParameterException('startAt wajib diisi dan berupa string (ISO 8601)');
+	}
+
+	if (typeof payload?.endAt !== 'string' || payload.endAt.trim() === '') {
+		throw new InvalidParameterException('endAt wajib diisi dan berupa string (ISO 8601)');
+	}
+
+	const startAt = formatGoogleCalendarDate(payload.startAt.trim(), 'startAt');
+	const endAt = formatGoogleCalendarDate(payload.endAt.trim(), 'endAt');
+
+	if (new Date(payload.endAt).getTime() <= new Date(payload.startAt).getTime()) {
+		throw new InvalidParameterException('endAt harus lebih besar dari startAt');
+	}
+
+	return {
+		title,
+		startAt,
+		endAt,
+		description: validateOptionalString(payload.description, 'description'),
+		location: validateOptionalString(payload.location, 'location')
+	};
+};
+
+export const buildEventCalendarUrl = (event: TEventQrPayload): string => {
+	const params = new URLSearchParams({
+		action: 'TEMPLATE',
+		text: event.title,
+		dates: `${event.startAt}/${event.endAt}`
+	});
+
+	if (event.description) {
+		params.set('details', event.description);
+	}
+
+	if (event.location) {
+		params.set('location', event.location);
+	}
+
+	return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
+
+export const generateEventQrCode = async (
+	event: TEventQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildEventCalendarUrl(event);
+
+	return generateQrCodeOutput(url, options, 'event');
+};
+
+export type TSocialPlatform =
+	| 'instagram'
+	| 'tiktok'
+	| 'youtube'
+	| 'linkedin'
+	| 'facebook'
+	| 'twitter'
+	| 'telegram';
+
+export type TSocialQrPayload = {
+	platform: TSocialPlatform;
+	username: string;
+};
+
+const SOCIAL_PLATFORMS: TSocialPlatform[] = [
+	'instagram',
+	'tiktok',
+	'youtube',
+	'linkedin',
+	'facebook',
+	'twitter',
+	'telegram'
+];
+
+const buildSocialProfileUrl = (platform: TSocialPlatform, username: string): string => {
+	const handle = username.replace(/^@/, '');
+
+	switch (platform) {
+		case 'instagram':
+			return `https://instagram.com/${handle}`;
+		case 'tiktok':
+			return `https://tiktok.com/@${handle}`;
+		case 'youtube':
+			return handle.startsWith('UC')
+				? `https://youtube.com/channel/${handle}`
+				: `https://youtube.com/@${handle}`;
+		case 'linkedin':
+			return `https://linkedin.com/in/${handle}`;
+		case 'facebook':
+			return `https://facebook.com/${handle}`;
+		case 'twitter':
+			return `https://x.com/${handle}`;
+		case 'telegram':
+			return `https://t.me/${handle}`;
+	}
+};
+
+export const validateSocialQrPayload = (body: unknown): TSocialQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (
+		typeof payload?.platform !== 'string' ||
+		!SOCIAL_PLATFORMS.includes(payload.platform as TSocialPlatform)
+	) {
+		throw new InvalidParameterException(
+			`platform wajib diisi dan harus salah satu dari: ${SOCIAL_PLATFORMS.join(', ')}`
+		);
+	}
+
+	if (typeof payload?.username !== 'string' || payload.username.trim() === '') {
+		throw new InvalidParameterException('username wajib diisi dan berupa string');
+	}
+
+	const username = payload.username.trim().replace(/^@/, '');
+
+	if (!/^[a-zA-Z0-9._-]{1,50}$/.test(username) && !/^UC[\w-]{20,}$/.test(username)) {
+		throw new InvalidParameterException('username tidak valid');
+	}
+
+	return {
+		platform: payload.platform as TSocialPlatform,
+		username
+	};
+};
+
+export const buildSocialQrUrl = (social: TSocialQrPayload): string =>
+	buildSocialProfileUrl(social.platform, social.username);
+
+export const generateSocialQrCode = async (
+	social: TSocialQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildSocialQrUrl(social);
+
+	return generateQrCodeOutput(url, options, 'social');
 };
 
 const normalizeQrCodeSvg = (svg: string): string => {
