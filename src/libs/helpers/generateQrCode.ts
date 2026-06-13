@@ -1,10 +1,106 @@
 import QRCode from 'qrcode';
 import { InvalidParameterException } from '@/libs/exceptions/InvalidParameterException';
 
+export type TQrCodeFormat = 'svg' | 'png';
 export type TQrCodeOptions = {
 	width?: number;
 	margin?: number;
 	errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
+	darkColor?: string;
+	lightColor?: string;
+	format?: TQrCodeFormat;
+};
+
+export type TQrCodeResult = {
+	base64: string;
+	format: TQrCodeFormat;
+	mimeType: string;
+};
+
+export const BATCH_QR_MAX_ITEMS = 50;
+
+const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+
+const validateHexColor = (color: unknown, fieldName: string): string | undefined => {
+	if (color === undefined || color === null || color === '') {
+		return undefined;
+	}
+
+	if (typeof color !== 'string' || !HEX_COLOR_PATTERN.test(color.trim())) {
+		throw new InvalidParameterException(`${fieldName} harus berupa kode warna hex (#RGB atau #RRGGBB)`);
+	}
+
+	return color.trim();
+};
+
+export const validateQrCodeOptions = (options: unknown): TQrCodeOptions => {
+	if (options === undefined || options === null) {
+		return {};
+	}
+
+	if (typeof options !== 'object') {
+		throw new InvalidParameterException('options harus berupa object');
+	}
+
+	const raw = options as Record<string, unknown>;
+	const validated: TQrCodeOptions = {};
+
+	if (raw.width !== undefined) {
+		if (typeof raw.width !== 'number' || !Number.isInteger(raw.width) || raw.width < 100 || raw.width > 2000) {
+			throw new InvalidParameterException('width harus bilangan bulat antara 100 dan 2000');
+		}
+		validated.width = raw.width;
+	}
+
+	if (raw.margin !== undefined) {
+		if (typeof raw.margin !== 'number' || !Number.isInteger(raw.margin) || raw.margin < 0 || raw.margin > 20) {
+			throw new InvalidParameterException('margin harus bilangan bulat antara 0 dan 20');
+		}
+		validated.margin = raw.margin;
+	}
+
+	if (raw.errorCorrectionLevel !== undefined) {
+		if (!['L', 'M', 'Q', 'H'].includes(raw.errorCorrectionLevel as string)) {
+			throw new InvalidParameterException('errorCorrectionLevel harus L, M, Q, atau H');
+		}
+		validated.errorCorrectionLevel = raw.errorCorrectionLevel as TQrCodeOptions['errorCorrectionLevel'];
+	}
+
+	const darkColor = validateHexColor(raw.darkColor, 'darkColor');
+	if (darkColor) {
+		validated.darkColor = darkColor;
+	}
+
+	const lightColor = validateHexColor(raw.lightColor, 'lightColor');
+	if (lightColor) {
+		validated.lightColor = lightColor;
+	}
+
+	if (raw.format !== undefined) {
+		if (raw.format !== 'svg' && raw.format !== 'png') {
+			throw new InvalidParameterException('format harus svg atau png');
+		}
+		validated.format = raw.format;
+	}
+
+	return validated;
+};
+
+const buildQrCodeRenderOptions = (options?: TQrCodeOptions) => {
+	const renderOptions: QRCode.QRCodeToStringOptions & QRCode.QRCodeToBufferOptions = {
+		width: options?.width,
+		margin: options?.margin,
+		errorCorrectionLevel: options?.errorCorrectionLevel ?? 'M'
+	};
+
+	if (options?.darkColor || options?.lightColor) {
+		renderOptions.color = {
+			dark: options.darkColor ?? '#000000',
+			light: options.lightColor ?? '#ffffff'
+		};
+	}
+
+	return renderOptions;
 };
 
 export const validateQrCodeUrl = (url: unknown, fieldName = 'url'): string => {
@@ -41,15 +137,54 @@ export const generateQrCodeSvgFromContent = async (
 
 	try {
 		const svg = await QRCode.toString(content.trim(), {
-			type: 'svg',
-			width: options?.width,
-			margin: options?.margin,
-			errorCorrectionLevel: options?.errorCorrectionLevel ?? 'M'
+			...buildQrCodeRenderOptions(options),
+			type: 'svg'
 		});
 		return normalizeQrCodeSvg(svg);
 	} catch {
 		throw new InvalidParameterException('Gagal membuat QR code dari konten yang diberikan');
 	}
+};
+
+export const generateQrCodePngFromContent = async (
+	content: string,
+	options?: TQrCodeOptions
+): Promise<string> => {
+	if (typeof content !== 'string' || content.trim() === '') {
+		throw new InvalidParameterException('Konten wajib diisi dan berupa string');
+	}
+
+	try {
+		const buffer = await QRCode.toBuffer(content.trim(), {
+			...buildQrCodeRenderOptions(options),
+			type: 'png'
+		});
+
+		return buffer.toString('base64');
+	} catch {
+		throw new InvalidParameterException('Gagal membuat QR code dari konten yang diberikan');
+	}
+};
+
+export const generateQrCodeOutput = async (
+	content: string,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const format = options?.format ?? 'svg';
+
+	if (format === 'png') {
+		return {
+			base64: await generateQrCodePngFromContent(content, options),
+			format: 'png',
+			mimeType: 'image/png'
+		};
+	}
+
+	return {
+		base64: svgToBase64(await generateQrCodeSvgFromContent(content, options)),
+		format: 'svg',
+		mimeType: 'image/svg+xml'
+	};
 };
 
 export const generateQrCodeSvg = async (
@@ -72,19 +207,220 @@ export const svgToBase64 = (svg: string): string => {
 export const generateQrCodeFromUrl = async (
 	url: string,
 	options?: TQrCodeOptions
-): Promise<string> => {
-	const svg = await generateQrCodeSvg(url, options);
+): Promise<TQrCodeResult> => {
+	const validatedUrl = validateQrCodeUrl(url);
 
-	return svgToBase64(svg);
+	return generateQrCodeOutput(validatedUrl, options);
 };
 
 export const generateQrCodeFromContent = async (
 	content: string,
 	options?: TQrCodeOptions
-): Promise<string> => {
-	const svg = await generateQrCodeSvgFromContent(content, options);
+): Promise<TQrCodeResult> => {
+	return generateQrCodeOutput(content, options);
+};
 
-	return svgToBase64(svg);
+export type TBatchQrItem = {
+	id?: string;
+	url: string;
+};
+
+export type TBatchQrResultItem = {
+	id?: string;
+	url: string;
+	success: boolean;
+	message?: string;
+	format?: TQrCodeFormat;
+	mimeType?: string;
+	base64?: string;
+};
+
+export const validateBatchQrPayload = (
+	body: unknown
+): { items: TBatchQrItem[]; options: TQrCodeOptions } => {
+	const payload = body as Record<string, unknown>;
+
+	if (!Array.isArray(payload?.items) || payload.items.length === 0) {
+		throw new InvalidParameterException('items wajib diisi dan berupa array yang tidak kosong');
+	}
+
+	if (payload.items.length > BATCH_QR_MAX_ITEMS) {
+		throw new InvalidParameterException(`items maksimal ${BATCH_QR_MAX_ITEMS} item per request`);
+	}
+
+	const items = payload.items.map((item, index) => {
+		if (typeof item !== 'object' || item === null) {
+			throw new InvalidParameterException(`items[${index}] harus berupa object`);
+		}
+
+		const entry = item as Record<string, unknown>;
+		const url = validateQrCodeUrl(entry.url, `items[${index}].url`);
+
+		return {
+			id: typeof entry.id === 'string' && entry.id.trim() !== '' ? entry.id.trim() : undefined,
+			url
+		};
+	});
+
+	return {
+		items,
+		options: validateQrCodeOptions(payload.options)
+	};
+};
+
+export const generateBatchQrCodes = async (
+	items: TBatchQrItem[],
+	options?: TQrCodeOptions
+): Promise<TBatchQrResultItem[]> => {
+	return Promise.all(
+		items.map(async (item): Promise<TBatchQrResultItem> => {
+			try {
+				const result = await generateQrCodeFromUrl(item.url, options);
+
+				return {
+					id: item.id,
+					url: item.url,
+					success: true,
+					format: result.format,
+					mimeType: result.mimeType,
+					base64: result.base64
+				};
+			} catch (error) {
+				return {
+					id: item.id,
+					url: item.url,
+					success: false,
+					message: error instanceof Error ? error.message : 'Gagal membuat QR code'
+				};
+			}
+		})
+	);
+};
+
+export type TTextQrPayload = {
+	text: string;
+};
+
+export const validateTextQrPayload = (body: unknown): TTextQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (typeof payload?.text !== 'string' || payload.text.trim() === '') {
+		throw new InvalidParameterException('text wajib diisi dan berupa string');
+	}
+
+	if (payload.text.length > 2000) {
+		throw new InvalidParameterException('text maksimal 2000 karakter');
+	}
+
+	return { text: payload.text.trim() };
+};
+
+export const generateTextQrCode = async (
+	text: string,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	return generateQrCodeFromContent(text, options);
+};
+
+export type TWhatsAppQrPayload = {
+	phone: string;
+	message: string;
+};
+
+export const validateWhatsAppQrPayload = (body: unknown): TWhatsAppQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (typeof payload?.phone !== 'string' || payload.phone.trim() === '') {
+		throw new InvalidParameterException('phone wajib diisi dan berupa string');
+	}
+
+	const phone = payload.phone.replace(/[\s\-+()]/g, '');
+	if (!/^\d{8,15}$/.test(phone)) {
+		throw new InvalidParameterException('phone harus berupa nomor valid (8-15 digit)');
+	}
+
+	const message = typeof payload.message === 'string' ? payload.message : '';
+	if (message.length > 1000) {
+		throw new InvalidParameterException('message maksimal 1000 karakter');
+	}
+
+	return { phone, message };
+};
+
+export const buildWhatsAppUrl = (whatsapp: TWhatsAppQrPayload): string => {
+	const baseUrl = `https://wa.me/${whatsapp.phone}`;
+
+	if (!whatsapp.message) {
+		return baseUrl;
+	}
+
+	return `${baseUrl}?text=${encodeURIComponent(whatsapp.message)}`;
+};
+
+export const generateWhatsAppQrCode = async (
+	whatsapp: TWhatsAppQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildWhatsAppUrl(whatsapp);
+
+	return generateQrCodeFromContent(url, options);
+};
+
+export type TEmailQrPayload = {
+	email: string;
+	subject: string;
+	body: string;
+};
+
+export const validateEmailQrPayload = (body: unknown): TEmailQrPayload => {
+	const payload = body as Record<string, unknown>;
+
+	if (typeof payload?.email !== 'string' || payload.email.trim() === '') {
+		throw new InvalidParameterException('email wajib diisi dan berupa string');
+	}
+
+	const email = payload.email.trim();
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+		throw new InvalidParameterException('email tidak valid');
+	}
+
+	const subject = typeof payload.subject === 'string' ? payload.subject : '';
+	const emailBody = typeof payload.body === 'string' ? payload.body : '';
+
+	if (subject.length > 200) {
+		throw new InvalidParameterException('subject maksimal 200 karakter');
+	}
+
+	if (emailBody.length > 1000) {
+		throw new InvalidParameterException('body maksimal 1000 karakter');
+	}
+
+	return { email, subject, body: emailBody };
+};
+
+export const buildMailtoUrl = (emailQr: TEmailQrPayload): string => {
+	const params = new URLSearchParams();
+
+	if (emailQr.subject) {
+		params.set('subject', emailQr.subject);
+	}
+
+	if (emailQr.body) {
+		params.set('body', emailQr.body);
+	}
+
+	const query = params.toString();
+
+	return query ? `mailto:${emailQr.email}?${query}` : `mailto:${emailQr.email}`;
+};
+
+export const generateEmailQrCode = async (
+	emailQr: TEmailQrPayload,
+	options?: TQrCodeOptions
+): Promise<TQrCodeResult> => {
+	const url = buildMailtoUrl(emailQr);
+
+	return generateQrCodeFromContent(url, options);
 };
 
 export type TWifiEncryption = 'WPA' | 'WEP' | 'nopass';
@@ -138,7 +474,7 @@ export const buildWifiQrPayload = (wifi: TWifiQrPayload): string => {
 export const generateWifiQrCode = async (
 	wifi: TWifiQrPayload,
 	options?: TQrCodeOptions
-): Promise<string> => {
+): Promise<TQrCodeResult> => {
 	const payload = buildWifiQrPayload(wifi);
 
 	return generateQrCodeFromContent(payload, options);
@@ -242,7 +578,7 @@ export const buildVcardQrPayload = (contact: TVcardQrPayload): string => {
 export const generateVcardQrCode = async (
 	contact: TVcardQrPayload,
 	options?: TQrCodeOptions
-): Promise<string> => {
+): Promise<TQrCodeResult> => {
 	const payload = buildVcardQrPayload(contact);
 
 	return generateQrCodeFromContent(payload, options);
