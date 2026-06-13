@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import {
 	generateBatchQrCodes,
 	generateEmailQrCode,
+	generateEventQrCode,
 	generateLocationQrCode,
 	generatePhoneQrCode,
 	generateQrCodeFromUrl,
@@ -14,6 +15,7 @@ import {
 	parseQrCodeOptionsFromQuery,
 	validateBatchQrPayload,
 	validateEmailQrPayload,
+	validateEventQrPayload,
 	validateLocationQrPayload,
 	validatePhoneQrPayload,
 	validateQrCodeOptions,
@@ -271,6 +273,22 @@ export const generateUtmQrCodeHandler = async (
 		const result = await generateUtmQrCode(utm, options);
 
 		sendQrCodeResponse(res, 'QR code UTM berhasil dibuat', result, resolveResponseMode(options));
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const generateEventQrCodeHandler = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): Promise<void> => {
+	try {
+		const event = validateEventQrPayload(req.body);
+		const options = validateQrCodeOptions(req.body?.options);
+		const result = await generateEventQrCode(event, options);
+
+		sendQrCodeResponse(res, 'QR code event berhasil dibuat', result, resolveResponseMode(options));
 	} catch (error) {
 		next(error);
 	}

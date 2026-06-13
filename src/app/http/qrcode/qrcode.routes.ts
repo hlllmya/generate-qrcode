@@ -3,6 +3,7 @@ import {
 	createQrCodeHandler,
 	generateBatchQrCodeHandler,
 	generateEmailQrCodeHandler,
+	generateEventQrCodeHandler,
 	generateLocationQrCodeHandler,
 	generatePhoneQrCodeHandler,
 	generateQrCodeHandler,
@@ -32,5 +33,6 @@ qrcodeRouter.post('/generate-location', generateLocationQrCodeHandler);
 qrcodeRouter.post('/generate-phone', generatePhoneQrCodeHandler);
 qrcodeRouter.post('/generate-sms', generateSmsQrCodeHandler);
 qrcodeRouter.post('/generate-utm', generateUtmQrCodeHandler);
+qrcodeRouter.post('/generate-event', generateEventQrCodeHandler);
 
 export default qrcodeRouter;
