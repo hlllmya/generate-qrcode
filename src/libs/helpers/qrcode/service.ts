@@ -106,7 +106,8 @@ export const getQrCodeApiInfo = () => ({
 		generateUtm: { method: 'POST', path: '/qrcode/generate-utm' },
 		generateEvent: { method: 'POST', path: '/qrcode/generate-event' },
 		generateSocial: { method: 'POST', path: '/qrcode/generate-social' },
-		generateApp: { method: 'POST', path: '/qrcode/generate-app' }
+		generateApp: { method: 'POST', path: '/qrcode/generate-app' },
+		generateForm: { method: 'POST', path: '/qrcode/generate-form' }
 	},
 	options: {
 		width: '100-2000 (px)',

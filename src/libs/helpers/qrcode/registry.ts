@@ -4,6 +4,7 @@ import { validateQrCodeUrl } from './validators';
 import {
 	buildAppStoreUrl,
 	buildEventCalendarUrl,
+	buildGoogleFormUrl,
 	buildLocationQrPayload,
 	buildMailtoUrl,
 	buildPhoneQrPayload,
@@ -15,6 +16,7 @@ import {
 	buildWifiQrPayload,
 	validateAppQrPayload,
 	validateEventQrPayload,
+	validateFormQrPayload,
 	validateLocationQrPayload,
 	validateEmailQrPayload,
 	validatePhoneQrPayload,
@@ -42,7 +44,8 @@ export const QR_CONTENT_RESOLVERS: Record<TSingleQrCodeType, TContentResolver> =
 	utm: (data) => buildUtmUrl(validateUtmQrPayload(data)),
 	event: (data) => buildEventCalendarUrl(validateEventQrPayload(data)),
 	social: (data) => buildSocialQrUrl(validateSocialQrPayload(data)),
-	app: (data) => buildAppStoreUrl(validateAppQrPayload(data))
+	app: (data) => buildAppStoreUrl(validateAppQrPayload(data)),
+	form: (data) => buildGoogleFormUrl(validateFormQrPayload(data))
 };
 
 export const resolveQrContent = (type: TSingleQrCodeType, data: unknown): string => {

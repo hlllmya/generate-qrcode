@@ -14,6 +14,7 @@ export type TQrCodeType =
 	| 'event'
 	| 'social'
 	| 'app'
+	| 'form'
 	| 'batch';
 
 export type TSingleQrCodeType = Exclude<TQrCodeType, 'batch'>;
@@ -73,5 +74,6 @@ export const QR_CODE_TYPES: TQrCodeType[] = [
 	'event',
 	'social',
 	'app',
+	'form',
 	'batch'
 ];
