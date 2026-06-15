@@ -107,3 +107,4 @@ export const generateEventQrCodeHandler = createQrTypeHandler('event', 'QR code 
 export const generateSocialQrCodeHandler = createQrTypeHandler('social', 'QR code media sosial berhasil dibuat');
 export const generateAppQrCodeHandler = createQrTypeHandler('app', 'QR code aplikasi berhasil dibuat');
 export const generateFormQrCodeHandler = createQrTypeHandler('form', 'QR code formulir berhasil dibuat');
+export const generatePaymentQrCodeHandler = createQrTypeHandler('payment', 'QR code pembayaran berhasil dibuat');
