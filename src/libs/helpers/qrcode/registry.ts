@@ -7,6 +7,7 @@ import {
 	buildGoogleFormUrl,
 	buildLocationQrPayload,
 	buildMailtoUrl,
+	buildPaymentQrPayload,
 	buildPhoneQrPayload,
 	buildSmsQrPayload,
 	buildSocialQrUrl,
@@ -18,6 +19,7 @@ import {
 	validateEventQrPayload,
 	validateFormQrPayload,
 	validateLocationQrPayload,
+	validatePaymentQrPayload,
 	validateEmailQrPayload,
 	validatePhoneQrPayload,
 	validateSmsQrPayload,
@@ -45,7 +47,8 @@ export const QR_CONTENT_RESOLVERS: Record<TSingleQrCodeType, TContentResolver> =
 	event: (data) => buildEventCalendarUrl(validateEventQrPayload(data)),
 	social: (data) => buildSocialQrUrl(validateSocialQrPayload(data)),
 	app: (data) => buildAppStoreUrl(validateAppQrPayload(data)),
-	form: (data) => buildGoogleFormUrl(validateFormQrPayload(data))
+	form: (data) => buildGoogleFormUrl(validateFormQrPayload(data)),
+	payment: (data) => buildPaymentQrPayload(validatePaymentQrPayload(data))
 };
 
 export const resolveQrContent = (type: TSingleQrCodeType, data: unknown): string => {

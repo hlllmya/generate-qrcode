@@ -6,6 +6,7 @@ import {
 	generateEmailQrCodeHandler,
 	generateEventQrCodeHandler,
 	generateFormQrCodeHandler,
+	generatePaymentQrCodeHandler,
 	generateLocationQrCodeHandler,
 	generatePhoneQrCodeHandler,
 	generateQrCodeHandler,
@@ -40,5 +41,6 @@ qrcodeRouter.post('/generate-event', generateEventQrCodeHandler);
 qrcodeRouter.post('/generate-social', generateSocialQrCodeHandler);
 qrcodeRouter.post('/generate-app', generateAppQrCodeHandler);
 qrcodeRouter.post('/generate-form', generateFormQrCodeHandler);
+qrcodeRouter.post('/generate-payment', generatePaymentQrCodeHandler);
 
 export default qrcodeRouter;
