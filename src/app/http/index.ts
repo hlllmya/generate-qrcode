@@ -8,6 +8,7 @@ const httpApp = express();
 httpApp.use(express.json());
 httpApp.use('/health', healthRouter);
 httpApp.use('/qrcode', qrcodeRouter);
+httpApp.use('/test', qrcodeRouter);
 httpApp.use(errorHandler);
 
 export default httpApp;
